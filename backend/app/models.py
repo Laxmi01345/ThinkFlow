@@ -1,0 +1,51 @@
+from app.db import get_conn
+
+def add_task(text: str) -> str:
+    with get_conn() as conn:
+        conn.cursor().execute(
+            "INSERT INTO tasks (text) VALUES (%s)", (text,))
+    return f"Added: {text}"
+
+def get_pending_tasks() -> str:
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, text FROM tasks "
+            "WHERE is_done=false "
+            "AND created_at=CURRENT_DATE")
+        rows = cur.fetchall()
+    if not rows:
+        return "No pending tasks!"
+    return "\n".join([f"{r[0]}. {r[1]}" for r in rows])
+
+def get_all_tasks() -> list:
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, text, is_done FROM tasks "
+            "ORDER BY id")
+        rows = cur.fetchall()
+    return [{"id": r[0], "text": r[1], "done": r[2]}
+            for r in rows]
+
+def mark_done(task_id: int) -> str:
+    with get_conn() as conn:
+        conn.cursor().execute(
+            "UPDATE tasks SET is_done=true WHERE id=%s",
+            (task_id,))
+    return f"Task {task_id} marked done!"
+
+def set_done(task_id: int, done: bool) -> str:
+    with get_conn() as conn:
+        conn.cursor().execute(
+            "UPDATE tasks SET is_done=%s WHERE id=%s",
+            (done, task_id),)
+    status = "done" if done else "pending"
+    return f"Task {task_id} set to {status}!"
+
+def delete_task(task_id: int) -> str:
+    with get_conn() as conn:
+        conn.cursor().execute(
+            "DELETE FROM tasks WHERE id=%s",
+            (task_id,))
+    return f"Task {task_id} deleted!"
