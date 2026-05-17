@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +23,7 @@ cerebras = Cerebras(api_key=CEREBRAS_API_KEY)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MCP_SERVER = os.path.join(BASE_DIR, "app", "mcp_server.py")
-PYTHON = os.path.join(BASE_DIR, "venv", "Scripts", "python.exe")
+PYTHON = sys.executable
 
 SYSTEM = """You are a task extraction assistant.
 Extract what the user wants and return ONLY JSON.
