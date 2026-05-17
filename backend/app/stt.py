@@ -2,7 +2,14 @@ import whisper
 import tempfile
 import os
 
-model = whisper.load_model("base")
+model = None
+
+
+def get_model():
+    global model
+    if model is None:
+        model = whisper.load_model("base")
+    return model
 
 
 async def transcribe_audio(audio):
@@ -17,7 +24,7 @@ async def transcribe_audio(audio):
 
     try:
 
-        result = model.transcribe(temp_path)
+        result = get_model().transcribe(temp_path)
 
         transcript = result["text"]
 
