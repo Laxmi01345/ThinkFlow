@@ -147,7 +147,12 @@ async def process_audio(audio: UploadFile = File(...)):
 
 @app.get("/tasks")
 def fetch_tasks():
-    return {"tasks": get_all_tasks()}
+    try:
+        return {"tasks": get_all_tasks()}
+    except Exception as e:
+        # Log error and return empty tasks so frontend can still function in dev
+        print("Error fetching tasks:", e)
+        return {"tasks": []}
 
 @app.patch("/tasks/{task_id}/done")
 def complete_task(task_id: int, payload: TaskDoneUpdate):
@@ -156,3 +161,5 @@ def complete_task(task_id: int, payload: TaskDoneUpdate):
 @app.delete("/tasks/{task_id}")
 def remove_task(task_id: int):
     return {"message": delete_task(task_id)}
+
+# yR7OzaALdUOZImeB
