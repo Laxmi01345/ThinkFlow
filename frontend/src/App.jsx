@@ -8,6 +8,9 @@ import Dashboard from './pages/Dashboard'
 import { Routes, Route } from 'react-router-dom'
 
 function App() {
+ 
+  const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  console.log("API_BASE:", API_BASE);
 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null)
@@ -21,7 +24,7 @@ function App() {
     
 
       try {
-        const response = await fetch("http://localhost:8000/tasks");
+        const response = await fetch(`${API_BASE}/tasks`);
 
         const data = await response.json()
         const normalizedTasks = (data.tasks || []).map((task) => ({
@@ -115,7 +118,7 @@ function App() {
             try {
 
             const response = await fetch(
-              "http://localhost:8000/upload-audio",
+              `${API_BASE}/upload-audio`,
               {
                 method: "POST",
                 body: formData,
@@ -183,7 +186,7 @@ function App() {
     formData.append("audio", lastAudioBlob, "recording.webm");
 
     try {
-      const response = await fetch("http://localhost:8000/upload-audio", {
+      const response = await fetch(`${API_BASE}/upload-audio`, {
         method: "POST",
         body: formData,
       });

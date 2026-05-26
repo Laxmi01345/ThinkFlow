@@ -7,6 +7,8 @@ export default function TaskList({
   setError,
 }) {
 
+  const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
   
   console.log("tasks in tasklist : ", tasks);
   const updateCounts = (nextTasks) => {
@@ -27,7 +29,7 @@ export default function TaskList({
     updateCounts(optimisticTasks);
 
     try {
-      const response = await fetch(`http://localhost:8000/tasks/${id}`, {
+      const response = await fetch(`${API_BASE}/tasks/${id}`, {
         method: "DELETE",
       });
 
