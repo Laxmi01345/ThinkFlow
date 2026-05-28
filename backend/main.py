@@ -74,6 +74,7 @@ def root():
 
 @app.post("/upload-audio")
 async def process_audio(audio: UploadFile = File(...)):
+    print(f"upload-audio received: filename={audio.filename}, content_type={audio.content_type}")
     try:
         # Step 1 — transcribe voice
         transcript = await transcribe_audio(audio)
