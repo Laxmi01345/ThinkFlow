@@ -10,7 +10,7 @@ from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 from app.config import CEREBRAS_API_KEY, CEREBRAS_MODEL
 from app.models import get_all_tasks, mark_done, set_done, delete_task
-from app.stt import transcribe_audio, get_model
+from app.stt import transcribe_audio
 
 # ── setup ─────────────────────────────────────────
 app = FastAPI(title="ThinkFlow API")
@@ -19,16 +19,6 @@ app.add_middleware(CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"])
-
-
-@app.on_event("startup")
-def warm_whisper_model():
-    print("Warming Whisper model at startup...")
-    try:
-        get_model()
-        print("Whisper model ready.")
-    except Exception as exc:
-        print("Whisper warmup failed:", exc)
 
 cerebras = Cerebras(api_key=CEREBRAS_API_KEY)
 
