@@ -82,7 +82,7 @@ async def process_audio(audio: UploadFile = File(...)):
 
     # Step 2 — cerebras decides tool
     response = cerebras.chat.completions.create(
-        model="llama3.1-8b",
+        model="gpt-oss-120b",
         messages=[
             {"role": "system", "content": SYSTEM},
             {"role": "user", "content": transcript}
@@ -132,7 +132,7 @@ async def process_audio(audio: UploadFile = File(...)):
 
     # Step 5 — natural reply
     final = cerebras.chat.completions.create(
-        model="llama3.1-8b",
+        model="gpt-oss-120b",
         messages=[
             {"role": "system", "content": "You are a friendly task manager. Summarize in 1-2 short sentences."},
             {"role": "user", "content": transcript},

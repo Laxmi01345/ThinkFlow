@@ -5,7 +5,7 @@ import TaskList from "../components/TaskList";
 import AssistantFeedback from "../components/AssitantFeedback";
 import { Mic } from "lucide-react";
 import logo from "../assets/logo.png"
-export default function Dashboard({ tasks, counts, setTasks, setCounts, setError }) {
+export default function Dashboard({ tasks, counts, setTasks, setCounts, setError, isLoading = false }) {
         return (
                 <div className="mx-auto w-full max-w-4xl space-y-8">
 
@@ -57,7 +57,7 @@ export default function Dashboard({ tasks, counts, setTasks, setCounts, setError
                                         {/* </section> */}
 
                                         {/* Tasks */}
-                                        <TaskList tasks={tasks} setTasks={setTasks} setCounts={setCounts} setError={setError} />
+                                        <TaskList tasks={tasks} setTasks={setTasks} setCounts={setCounts} setError={setError} isLoading={isLoading} />
 
                                 </section>
                         </main>

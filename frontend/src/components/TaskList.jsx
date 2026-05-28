@@ -5,12 +5,11 @@ export default function TaskList({
   setTasks,
   setCounts,
   setError,
+  isLoading = false,
 }) {
 
   const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
-  
-  console.log("tasks in tasklist : ", tasks);
   const updateCounts = (nextTasks) => {
     if (!setCounts) return;
     setCounts({
@@ -64,54 +63,64 @@ export default function TaskList({
       {/* Task List */}
       <div className="space-y-4">
 
-        {tasks.map((task) => (
-
-          <div
-            key={task.id}
-            className="
-              flex items-center gap-4
-              rounded-2xl bg-[#242424]
-              p-4
-            "
-          >
-
-            {/* Checkbox */}
-            <button
-              onClick={() =>
-                handleTaskSelect(task)
-              }
-              className="transition hover:scale-110"
-            >
-
-              {
-                task.done
-                  ? (
-                    <CheckCircle2 className="text-green-400" />
-                  )
-                  : (
-                    <Circle className="text-gray-500" />
-                  )
-              }
-
-            </button>
-
-            {/* Task Text */}
-            <p
-              className={`
-                text-lg transition
-                ${
-                  task.done
-                    ? "text-gray-500 line-through"
-                    : ""
-                }
-              `}
-            >
-              {task.text}
-            </p>
-
+        {isLoading ? (
+          <div className="rounded-2xl bg-[#242424] p-6 flex items-center justify-center">
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
+              <div className="text-lg">Loading tasks...</div>
+            </div>
           </div>
+        ) : (
+          tasks.map((task) => (
 
-        ))}
+            <div
+
+              key={task.id}
+              className="
+                flex items-center gap-4
+                rounded-2xl bg-[#242424]
+                p-4
+              "
+            >
+
+              {/* Checkbox */}
+              <button
+                onClick={() =>
+                  handleTaskSelect(task)
+                }
+                className="transition hover:scale-110"
+              >
+
+                {
+                  task.done
+                    ? (
+                      <CheckCircle2 className="text-green-400" />
+                    )
+                    : (
+                      <Circle className="text-gray-500" />
+                    )
+                }
+
+              </button>
+
+              {/* Task Text */}
+              <p
+                className={`
+                  text-lg transition
+                  ${
+                    task.done
+                      ? "text-gray-500 line-through"
+                      : ""
+                  }
+                `}
+              >
+                {task.text}
+              </p>
+
+            </div>
+
+          ))
+        )}
 
       </div>
 

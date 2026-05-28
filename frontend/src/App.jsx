@@ -13,17 +13,24 @@ function App() {
   console.log("API_BASE:", API_BASE);
 
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef(null)
+  const mediaStreamRef = useRef(null)
   const audioChunksRef = useRef([])
   const [tasks, setTasks] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
   const [counts, setCounts] = useState({ total: 0, completed: 0, pending: 0});
   const [errorMsg, setErrorMsg] = useState(null);
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [statusType, setStatusType] = useState('info');
+  const [assistantReply, setAssistantReply] = useState(null);
   const [lastAudioBlob, setLastAudioBlob] = useState(null);
 
   const fetchTasks = async()=>{
-    
+    setLoadingTasks(true);
 
-      try {
+          try {
+            setAssistantReply(null);
         const response = await fetch(`${API_BASE}/tasks`);
 
         const data = await response.json()
@@ -47,7 +54,15 @@ function App() {
         console.error(error);
         setErrorMsg('Unable to reach backend. Please check the server and try again.');
       }
+      finally {
+        setLoadingTasks(false);
+      }
     }
+
+  const showStatus = (message, type = 'info') => {
+    setStatusMsg(message);
+    setStatusType(type);
+  };
     
   useEffect(()=> {
     
@@ -55,6 +70,9 @@ function App() {
   },[])
 
   const handleRecording = async () => {
+    if (isProcessing) {
+      return;
+    }
 
     console.log("App:", isRecording);
 
@@ -69,6 +87,7 @@ function App() {
           await navigator.mediaDevices.getUserMedia({
             audio: true,
           });
+        mediaStreamRef.current = stream;
 
         console.log("Microphone access granted");
 
@@ -96,6 +115,8 @@ function App() {
         mediaRecorder.onstop = async () => {
 
           console.log("Recording stopped");
+          setIsProcessing(true);
+          showStatus('Processing your voice note...', 'info');
 
           const audioBlob = new Blob(
             audioChunksRef.current,
@@ -125,16 +146,29 @@ function App() {
               }
             );
 
+            if (!response.ok) {
+              throw new Error('Upload request failed');
+            }
+
             const data = await response.json();
             console.log(data);
             await fetchTasks();
             setErrorMsg(null);
+            showStatus(data.reply || 'Task added successfully.', 'success');
+            setAssistantReply(data.reply || 'Task added successfully.');
             setLastAudioBlob(null);
 
           } catch (error) {
             console.error("Upload failed:", error);
             setErrorMsg('Upload failed — backend may be down.');
+            showStatus('Processing failed. Please try again.', 'error');
             setLastAudioBlob(audioBlob);
+          } finally {
+            setIsProcessing(false);
+            if (mediaStreamRef.current) {
+              mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+              mediaStreamRef.current = null;
+            }
           }
 
         };
@@ -153,6 +187,7 @@ function App() {
         );
 
         setIsRecording(true);
+        showStatus('Recording in progress...', 'info');
 
       } catch (error) {
 
@@ -182,6 +217,8 @@ function App() {
 
   const retryUpload = async () => {
     if (!lastAudioBlob) return;
+    setIsProcessing(true);
+    showStatus('Processing your retry upload...', 'info');
     const formData = new FormData();
     formData.append("audio", lastAudioBlob, "recording.webm");
 
@@ -199,10 +236,15 @@ function App() {
       console.log('Retry success', data);
       await fetchTasks();
       setErrorMsg(null);
+      showStatus(data.reply || 'Task added successfully.', 'success');
+      setAssistantReply(data.reply || 'Task added successfully.');
       setLastAudioBlob(null);
     } catch (err) {
       console.error('Retry failed', err);
       setErrorMsg('Retry failed — backend may still be down.');
+      showStatus('Retry failed. Please try again.', 'error');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -211,6 +253,13 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-6 pb-32 md:pb-6">
+        {statusMsg && !errorMsg && (
+          <div className="max-w-7xl mx-auto mb-4">
+            <div className={`rounded-lg p-3 text-sm ${statusType === 'success' ? 'bg-green-600' : statusType === 'error' ? 'bg-amber-600' : 'bg-slate-700'}`}>
+              {statusMsg}
+            </div>
+          </div>
+        )}
         {errorMsg && (
           <div className="max-w-7xl mx-auto mb-4">
             <div className="rounded-lg bg-red-600 p-3 flex items-start justify-between">
@@ -238,10 +287,10 @@ function App() {
           <section>
             <Routes>
 
-              <Route path="/" element={<Dashboard tasks={tasks} counts={counts} setTasks={setTasks} setCounts={setCounts} setError={setErrorMsg} />} />
-              <Route path="/tasks" element={<TaskList tasks={tasks} setTasks={setTasks} setCounts={setCounts} setError={setErrorMsg} />} />
+              <Route path="/" element={<Dashboard tasks={tasks} counts={counts} setTasks={setTasks} setCounts={setCounts} setError={setErrorMsg} isLoading={loadingTasks} />} />
+              <Route path="/tasks" element={<TaskList tasks={tasks} setTasks={setTasks} setCounts={setCounts} setError={setErrorMsg} isLoading={loadingTasks} />} />
               <Route path="/feedback" element={<AssistantFeedback />} />
-              <Route path="/voice" element={<VoiceInput />} />
+              <Route path="/voice" element={<VoiceInput isRecording={isRecording} isProcessing={isProcessing} handleRecording={handleRecording} />} />
 
             </Routes>
           </section>
@@ -249,14 +298,14 @@ function App() {
           {/* Right column */}
           <aside className="hidden lg:flex lg:flex-col gap-5">
             <div className="sticky top-6 space-y-5">
-              <VoiceInput isRecording={isRecording} handleRecording={handleRecording} />
-              {/* <AssistantFeedback /> */}
+              <VoiceInput isRecording={isRecording} isProcessing={isProcessing} handleRecording={handleRecording} />
+              <AssistantFeedback loading={isProcessing} message={assistantReply} onDismiss={() => setAssistantReply(null)} />
             </div>
           </aside>
         </div>
       </main>
 
-      <FloatingMic isRecording={isRecording} handleRecording={handleRecording} />
+      <FloatingMic isRecording={isRecording} isProcessing={isProcessing} handleRecording={handleRecording} />
 
 
 
