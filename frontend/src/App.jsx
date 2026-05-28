@@ -26,6 +26,16 @@ function App() {
   const [assistantReply, setAssistantReply] = useState(null);
   const [lastAudioBlob, setLastAudioBlob] = useState(null);
 
+  const readResponseBody = async (response) => {
+    const contentType = response.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      return response.json();
+    }
+
+    return response.text();
+  };
+
   const fetchTasks = async()=>{
     setLoadingTasks(true);
 
@@ -33,7 +43,12 @@ function App() {
             setAssistantReply(null);
         const response = await fetch(`${API_BASE}/tasks`);
 
-        const data = await response.json()
+        const data = await readResponseBody(response);
+
+        if (!response.ok) {
+          throw new Error(typeof data === 'string' ? data : 'Failed to load tasks');
+        }
+
         const normalizedTasks = (data.tasks || []).map((task) => ({
           ...task,
           done: !!task.done,
@@ -146,11 +161,16 @@ function App() {
               }
             );
 
+            const data = await readResponseBody(response);
+
             if (!response.ok) {
-              throw new Error('Upload request failed');
+              throw new Error(
+                typeof data === 'string'
+                  ? data
+                  : data?.detail || 'Upload request failed'
+              );
             }
 
-            const data = await response.json();
             console.log(data);
             await fetchTasks();
             setErrorMsg(null);
@@ -228,11 +248,16 @@ function App() {
         body: formData,
       });
 
+      const data = await readResponseBody(response);
+
       if (!response.ok) {
-        throw new Error('Retry upload failed');
+        throw new Error(
+          typeof data === 'string'
+            ? data
+            : data?.detail || 'Retry upload failed'
+        );
       }
 
-      const data = await response.json();
       console.log('Retry success', data);
       await fetchTasks();
       setErrorMsg(null);
