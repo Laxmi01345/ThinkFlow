@@ -1,15 +1,19 @@
 import os
-import sys
 import json
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from cerebras.cloud.sdk import Cerebras
-from fastmcp import Client
-from fastmcp.client.transports import StdioTransport
 from app.config import CEREBRAS_API_KEY, CEREBRAS_MODEL
-from app.models import get_all_tasks, mark_done, set_done, delete_task
+from app.models import (
+    add_task,
+    get_all_tasks,
+    get_pending_tasks,
+    mark_done,
+    set_done,
+    delete_task,
+)
 from app.stt import transcribe_audio
 
 # ── setup ─────────────────────────────────────────
@@ -22,32 +26,40 @@ app.add_middleware(CORSMiddleware,
 
 cerebras = Cerebras(api_key=CEREBRAS_API_KEY)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MCP_SERVER = os.path.join(BASE_DIR, "app", "mcp_server.py")
-PYTHON = sys.executable
+SYSTEM = """You are ThinkFlow's assistant.
+Read the user's message and the provided task context, then return ONLY JSON.
 
-SYSTEM = """You are a task extraction assistant.
-Extract what the user wants and return ONLY JSON.
+Use this schema:
+{"mode": "task", "tool": "add_task", "tasks": ["task 1", "task 2"], "reply": "optional short reply"}
+{"mode": "task", "tool": "get_pending_tasks", "reply": "optional short reply"}
+{"mode": "task", "tool": "mark_done", "task_id": 1, "reply": "optional short reply"}
+{"mode": "task", "tool": "delete_task", "task_id": 1, "reply": "optional short reply"}
+{"mode": "chat", "reply": "direct answer to the user's question"}
 
-Adding tasks:
-{"tool": "add_task", "tasks": ["task 1", "task 2"]}
-
-Checking pending:
-{"tool": "get_pending_tasks", "tasks": []}
-
-Marking done:
-{"tool": "mark_done", "tasks": [], "task_id": 1}
-
-Deleting:
-{"tool": "delete_task", "tasks": [], "task_id": 1}
-
+If the user asks for insights, progress, summaries, status, or asks a general question, use mode chat.
+When answering progress questions, use the task context to mention completed count, pending count, and any useful observations.
+If the user asks to add, complete, delete, or check tasks, use mode task.
 Return ONLY valid JSON. No markdown. No explanation."""
 
-def get_mcp_client():
-    return Client(StdioTransport(
-        command=PYTHON,
-        args=[MCP_SERVER]
-    ))
+
+def build_task_context():
+    tasks = get_all_tasks()
+    completed = sum(1 for task in tasks if task["done"])
+    pending = len(tasks) - completed
+    pending_titles = [task["text"] for task in tasks if not task["done"]]
+
+    return {
+        "total": len(tasks),
+        "completed": completed,
+        "pending": pending,
+        "tasks": tasks,
+        "pending_titles": pending_titles,
+    }
+
+
+def parse_llm_json(raw_text: str):
+    cleaned = raw_text.strip().replace("```json", "").replace("```", "").strip()
+    return json.loads(cleaned)
 
 class TaskDoneUpdate(BaseModel):
     done: bool
@@ -80,21 +92,29 @@ async def process_audio(audio: UploadFile = File(...)):
         transcript = await transcribe_audio(audio)
         print("transcript : ", transcript)
 
-        # Step 2 — cerebras decides tool
+        task_context = build_task_context()
+
+        # Step 2 — cerebras decides whether this is chat or a task action
         response = cerebras.chat.completions.create(
             model=CEREBRAS_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM},
-                {"role": "user", "content": transcript}
+                {
+                    "role": "user",
+                    "content": (
+                        f"Task context: {json.dumps(task_context)}\n"
+                        f"User message: {transcript}"
+                    ),
+                },
             ]
         )
         raw = response.choices[0].message.content.strip()
-        raw = raw.replace("```json", "").replace("```", "").strip()
         print("raw :", raw)
 
         # Step 3 — parse decision
-        tool_call = json.loads(raw)
-        tool_name = tool_call["tool"]
+        tool_call = parse_llm_json(raw)
+        mode = tool_call.get("mode")
+        tool_name = tool_call.get("tool")
     except RuntimeError as exc:
         return JSONResponse(
             status_code=422,
@@ -107,40 +127,40 @@ async def process_audio(audio: UploadFile = File(...)):
             content={"detail": "Voice processing failed on the server.", "reply": "Processing failed. Please try again."}
         )
 
-    # Step 4 — call MCP tool
+    if mode == "chat":
+        reply = tool_call.get("reply") or "I can help with your progress or tasks if you want to ask about them."
+        return {
+            "transcript": transcript,
+            "reply": reply,
+            "mode": "chat",
+        }
+
+    # Step 4 — execute the selected task action directly
     results = []
     try:
-        async with get_mcp_client() as mcp:
+        if tool_name == "add_task":
+            for task in tool_call.get("tasks", []):
+                results.append(add_task(task))
 
-            if tool_name == "add_task":
-                for task in tool_call.get("tasks", []):
-                    result = await mcp.call_tool(
-                        "add_task_tool", {"text": task})
-                    results.append(result.content[0].text)
+            reply_text = tool_call.get("reply") or ("Task added successfully." if len(tool_call.get("tasks", [])) == 1 else "Tasks added successfully.")
+            return {
+                "transcript": transcript,
+                "reply": reply_text,
+                "mode": "task",
+                "tool_result": "\n".join(results)
+            }
 
-                reply_text = "Task added successfully." if len(tool_call.get("tasks", [])) == 1 else "Tasks added successfully."
-                return {
-                    "transcript": transcript,
-                    "reply": reply_text,
-                    "tool_result": "\n".join(results)
-                }
+        if tool_name == "get_pending_tasks":
+            results.append(get_pending_tasks())
 
-            elif tool_name == "get_pending_tasks":
-                result = await mcp.call_tool(
-                    "get_pending_tasks_tool", {})
-                results.append(result.content[0].text)
+        elif tool_name == "mark_done":
+            results.append(mark_done(tool_call["task_id"]))
 
-            elif tool_name == "mark_done":
-                result = await mcp.call_tool(
-                    "mark_done_tool",
-                    {"task_id": tool_call["task_id"]})
-                results.append(result.content[0].text)
+        elif tool_name == "delete_task":
+            results.append(delete_task(tool_call["task_id"]))
 
-            elif tool_name == "delete_task":
-                result = await mcp.call_tool(
-                    "delete_task_tool",
-                    {"task_id": tool_call["task_id"]})
-                results.append(result.content[0].text)
+        else:
+            raise ValueError(f"Unsupported tool: {tool_name}")
 
     except Exception as exc:
         print("upload-audio failed during tool call:", exc)
@@ -150,28 +170,24 @@ async def process_audio(audio: UploadFile = File(...)):
         )
 
     tool_result = "\n".join(results)
+    reply_text = tool_call.get("reply")
 
-    # Step 5 — natural reply
-    try:
-        final = cerebras.chat.completions.create(
-            model=CEREBRAS_MODEL,
-            messages=[
-                {"role": "system", "content": "You are a friendly task manager. Summarize in 1-2 short sentences."},
-                {"role": "user", "content": transcript},
-                {"role": "user", "content": f"Tool result: {tool_result}"}
-            ]
-        )
+    if not reply_text:
+        if tool_name == "get_pending_tasks":
+            reply_text = tool_result or "You have no pending tasks right now."
+        elif tool_name == "mark_done":
+            reply_text = tool_result or "Task updated successfully."
+        elif tool_name == "delete_task":
+            reply_text = tool_result or "Task deleted successfully."
+        else:
+            reply_text = "Task updated successfully."
 
-        return {
-            "transcript": transcript,
-            "reply": final.choices[0].message.content
-        }
-    except Exception as exc:
-        print("upload-audio failed during reply:", exc)
-        return JSONResponse(
-            status_code=503,
-            content={"detail": "Reply generation failed on the server.", "reply": "Task saved, but I could not generate a summary."}
-        )
+    return {
+        "transcript": transcript,
+        "reply": reply_text,
+        "mode": "task",
+        "tool_result": tool_result,
+    }
 
 @app.get("/tasks")
 def fetch_tasks():
