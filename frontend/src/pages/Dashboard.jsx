@@ -5,7 +5,17 @@ import TaskList from "../components/TaskList";
 import AssistantFeedback from "../components/AssitantFeedback";
 import { Mic } from "lucide-react";
 import logo from "../assets/logo.png"
-export default function Dashboard({ tasks, counts, setTasks, setCounts, setError, isLoading = false }) {
+export default function Dashboard({
+        tasks,
+        counts,
+        setTasks,
+        setCounts,
+        setError,
+        isLoading = false,
+        assistantReply = null,
+        isProcessing = false,
+        onDismissAssistant = null,
+}) {
         return (
                 <div className="mx-auto w-full max-w-4xl space-y-8">
 
@@ -63,9 +73,13 @@ export default function Dashboard({ tasks, counts, setTasks, setCounts, setError
                         </main>
 
                         {/* Mobile Assistant Feedback */}
-                        {/* <div className="mx-auto w-full max-w-3xl lg:hidden">
-                                <AssistantFeedback />
-                        </div> */}
+                        <div className="mx-auto w-full max-w-3xl px-2 lg:hidden">
+                                <AssistantFeedback
+                                        loading={isProcessing}
+                                        message={assistantReply}
+                                        onDismiss={onDismissAssistant}
+                                />
+                        </div>
 
                 </div>
         );

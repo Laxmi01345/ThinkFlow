@@ -277,14 +277,7 @@ function App() {
     <div className="flex h-screen bg-[#1e1e1e] text-white overflow-hidden">
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 pb-32 md:pb-6">
-        {statusMsg && !errorMsg && (
-          <div className="max-w-7xl mx-auto mb-4">
-            <div className={`rounded-lg p-3 text-sm ${statusType === 'success' ? 'bg-green-600' : statusType === 'error' ? 'bg-amber-600' : 'bg-slate-700'}`}>
-              {statusMsg}
-            </div>
-          </div>
-        )}
+      <main className="app-scrollbar flex-1 overflow-y-auto p-6 pb-32 md:pb-6">
         {errorMsg && (
           <div className="max-w-7xl mx-auto mb-4">
             <div className="rounded-lg bg-red-600 p-3 flex items-start justify-between">
@@ -312,7 +305,7 @@ function App() {
           <section>
             <Routes>
 
-              <Route path="/" element={<Dashboard tasks={tasks} counts={counts} setTasks={setTasks} setCounts={setCounts} setError={setErrorMsg} isLoading={loadingTasks} />} />
+              <Route path="/" element={<Dashboard tasks={tasks} counts={counts} setTasks={setTasks} setCounts={setCounts} setError={setErrorMsg} isLoading={loadingTasks} assistantReply={assistantReply} isProcessing={isProcessing} onDismissAssistant={() => setAssistantReply(null)} />} />
               <Route path="/tasks" element={<TaskList tasks={tasks} setTasks={setTasks} setCounts={setCounts} setError={setErrorMsg} isLoading={loadingTasks} />} />
               <Route path="/feedback" element={<AssistantFeedback />} />
               <Route path="/voice" element={<VoiceInput isRecording={isRecording} isProcessing={isProcessing} handleRecording={handleRecording} />} />

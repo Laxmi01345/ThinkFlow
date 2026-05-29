@@ -22,10 +22,15 @@ def get_all_tasks() -> list:
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, text, is_done FROM tasks "
+            "SELECT id, text, is_done, created_at FROM tasks "
             "ORDER BY id")
         rows = cur.fetchall()
-    return [{"id": r[0], "text": r[1], "done": r[2]}
+    return [{
+                "id": r[0],
+                "text": r[1],
+                "done": r[2],
+                "created_at": r[3].isoformat() if hasattr(r[3], "isoformat") else r[3],
+            }
             for r in rows]
 
 def mark_done(task_id: int) -> str:
