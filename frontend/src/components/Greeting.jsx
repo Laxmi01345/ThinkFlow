@@ -32,7 +32,7 @@ export default function Greeting({ userName }) {
 
     return (
         <div className="mb-8">
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-xl font-bold sm:text-3xl">
                 {greeting}{userName ? `, ${userName}` : ''}
             </h1>
 
