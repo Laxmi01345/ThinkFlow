@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle } from "lucide-react";
+import { CheckCircle2, Circle, ListTodo } from "lucide-react";
 
 function getRelativeDayLabel(createdAt) {
   if (!createdAt) return "";
@@ -47,8 +47,10 @@ export default function TaskList({
     updateCounts(optimisticTasks);
 
     try {
+      const token = localStorage.getItem('tf_token')
       const response = await fetch(`${API_BASE}/tasks/${id}`, {
         method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       if (!response.ok) {
@@ -97,6 +99,16 @@ export default function TaskList({
               <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
               <div className="text-base sm:text-lg">Loading tasks...</div>
             </div>
+          </div>
+        ) : tasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="mb-4 rounded-full bg-[#242424] p-6">
+              <ListTodo size={56} className="text-gray-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-300">No tasks yet</h3>
+            <p className="mt-2 max-w-xs text-sm text-gray-500">
+              Tap the mic button and say something like "Add task buy groceries"
+            </p>
           </div>
         ) : (
           Array.from(groupedTasks.entries()).map(([label, group]) => (

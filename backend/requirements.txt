@@ -6,3 +6,4 @@ cerebras-cloud-sdk
 fastmcp
 python-multipart
 sarvamai
+supabase

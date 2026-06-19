@@ -16,7 +16,7 @@ function formatDayAndDate(date) {
     }).format(date);
 }
 
-export default function Greeting() {
+export default function Greeting({ userName }) {
     const [now, setNow] = useState(() => new Date());
 
     useEffect(() => {
@@ -33,7 +33,7 @@ export default function Greeting() {
     return (
         <div className="mb-8">
             <h1 className="text-3xl font-bold">
-                {greeting}
+                {greeting}{userName ? `, ${userName}` : ''}
             </h1>
 
             <p className="text-gray-400 mt-1">

@@ -3,12 +3,16 @@ import {
   CheckSquare,
   Settings,
   User,
+  LogOut,
 } from "lucide-react";
 import { useState } from "react";
 import logo from "../assets/logo.png";
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Sidebar() {
+  const { user, logout } = useAuth();
+
   return (
     <aside
       className="
@@ -52,44 +56,6 @@ export default function Sidebar() {
             <CheckSquare size={20} />
             Dashboard
           </NavLink>
-
-          {/* Tasks
-          <NavLink
-            to="/tasks"
-            className={({ isActive }) =>
-              `
-                flex items-center gap-3
-                p-3 rounded-2xl transition
-                ${
-                  isActive
-                    ? "bg-blue-500"
-                    : "hover:bg-[#2a2a2a]"
-                }
-              `
-            }
-          >
-            <CheckSquare size={20} />
-            Tasks
-          </NavLink>
-
-          Voice
-          <NavLink
-            to="/voice"
-            className={({ isActive }) =>
-              `
-                flex items-center gap-3
-                p-3 rounded-2xl transition
-                ${
-                  isActive
-                    ? "bg-blue-500"
-                    : "hover:bg-[#2a2a2a]"
-                }
-              `
-            }
-          >
-            <Mic size={20} />
-            Voice
-          </NavLink> */}
 
         </nav>
 
@@ -135,6 +101,18 @@ export default function Sidebar() {
           <Settings size={20} />
           Settings
         </NavLink>
+
+        {/* User info & Logout */}
+        <div className="rounded-2xl bg-[#2a2a2a] p-3">
+          <p className="text-xs text-gray-400 truncate mb-2">{user?.email}</p>
+          <button
+            onClick={logout}
+            className="flex items-center gap-3 w-full text-left text-red-400 hover:text-red-300 transition"
+          >
+            <LogOut size={18} />
+            Logout
+          </button>
+        </div>
 
       </div>
 
