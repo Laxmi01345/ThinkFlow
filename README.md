@@ -177,6 +177,3 @@ ThinkFlow/
     └── package.json
 ```
 
-## License
-
-MIT
